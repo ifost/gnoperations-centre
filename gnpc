@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+
+import gnpcAlertEvent
+import gnpcGetOpt
+import sys
+
+def usage():
+    sys.stderr.write("USAGE: "+sys.argv[0]+
+                     " message [dest]  --severity=CRITICAL /hostname:something -t 'A textual message'")
+
+
+print gnpcGetOpt.gnpcGetOpt(sys.argv[1:],gnpcAlertEvent.field_acronyms)
+

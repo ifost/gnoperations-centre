@@ -1,0 +1,197 @@
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "gnopc-notes"
+%%% End: 
+\documentclass[a4paper]{article}
+
+\title{Notes on GnoperationsCentre}
+
+\begin{document}
+
+\maketitle
+\newcommand{\gnopc}[0]{ \textsf{Gnopc} }
+\begin{itemize}
+
+
+\section{Goals}
+
+\begin{itemize}
+\item To be able to manage OS/390, OS/2,  Netware, Unix, MacOS and MS-Windows
+ systems
+\item Happy with NAT'ed networks.
+\item Can manage mixed IPv6/IPv4 networks, even from IPv4 hosts.
+\item Working both ways across a firewall
+\item It should provide a mechanism so that VNC takeover of a machine in
+ an unreachable network is possible.  Likewise for telnet, ssh and X-windows.
+ Maybe also NetBus or BackOrifice.
+\item It should provide a logging-of-data mechanism for capacity planning,
+and an outage record for helping identify platforms with downtime problems.
+\item Safe to use across the greater internet
+\item Autodiscovery of networks, routers, services, operating systems
+\item To know that some interfaces may be inaccessible to some
+protocols because of firewalling
+\item Extensible in many languages
+\item It should understand clusters,  and the idea that a service may
+ ``float'' between several systems.  (A service may be tied to an IP 
+ address, not a system)
+\item To have web-based, text-based, command-line and GUI-based interfaces
+\item If possible,  it should use an existing infrastructure,  or if one
+has to be made,  that infrastructure should be one that is useful in some
+other context.
+\item It should have plain text configuration files that can optionally
+be centrally managed.  i.e.  a managed client can decide at a fine level
+what functions they want their management company to offer.
+\item When some problem occurs,  it should be possible to:
+  \begin{itemize}
+  \item have the system automatically run some command
+  \item have a management server's operator choose a command to have run
+  \item page someone,  email someone,  send SMS,  play a sound
+  \item see it in a console somewhere
+  \end{itemize}
+\end{itemize}
+
+\subsection{Monitors}
+
+\begin{itemize}
+\item SNMP mib variable
+\item Program return code
+\item Program output
+\item ``Standard thing'' -- cpu load, memory, disk space
+\end{itemize}
+
+For each of these \ldots
+\begin{itemize}
+\item Check a number for a threshold having been exceeded a certain number
+ of times,  and going back under threshold
+\item Check a string for having a particular pattern
+\end{itemize}
+
+
+\subsection{Network}
+
+\begin{itemize}
+\item Ping checks -- is host alive?
+\item TCP ping checks -- is service available?  (Also as an alternative
+ to a ping check)
+\item HTTP and HTTPS checks -- is a web site available?  Does it have
+a particular response?
+\item SMTP, POP, IMAP checks -- can emails be sent and received?
+\item SNMP checks (also SNMP mib variable) -- is a particular interface
+ OK, etc?
+\end{itemize}
+
+For each of these\ldots
+\begin{itemize}
+\item Rough sensitivity -- e.g. did we get one OK out of 3 ?
+\end{itemize}
+
+\subsection{File monitoring}
+
+\begin{itemize}
+\item Read a file for a particular set of patterns
+\end{itemize}
+
+
+\subsection{Databases}
+
+\begin{itemize}
+\item Check for upness/down-ness etc
+\item Check for standard conditions
+\end{itemize}
+
+
+\section{Scenarios}
+
+
+\subsection{Monitor Program}
+
+A program is told to perform one of its regular monitoring tests. It
+does this, discovers that it is over the appropriate threshold,  and
+needs to alert about this.  It sends a message about this to a program
+whose jobs it is to care.  Hmm\ldots maybe it actually just lets a 
+publish-and-subscribe server know about it.
+
+
+
+
+\subsection{Distant Networks}
+
+Here at Gnopc Management Corp,  we run a \gnopc server in our DMZ (!!??),
+which we call \texttt{gnpc.gnopc.com}.   Our staff operate inside our
+firewall,  and connect to it through masqueraded connections.  Most of
+them just use a web interface,  so their privileges just work off their
+login to the web server.  Others use a GUI, so we have to create 
+keypairs for them,  and authorisation rules in the various programs.
+
+
+We have three clients (Easy Corp,  Hard Corp and Bought Corp).  
+
+Easy Corp just want to have hard disk space monitored
+on their mail server (\texttt{mail.easycorp.com}),  so it just connects
+to port 4973 of \texttt{gnpc.gnopc.com}.  It uses its private key function
+so that we know that it really is who it says it is.
+
+
+Hard Corp have many servers which report back to \texttt{gnpc.hardcorp.com}.
+Hard Corp's staff connect to this machine also and get notified about
+problems from here.  However,  some of their functions have been outsourced
+to us,  so when \gnopc starts up on \texttt{gnpc.hardcorp.com},  it
+connects to port 4973 of \texttt{gnpc.gnopc.com} and uses its private
+key function.
+
+Bought Corp was bought by Hard Corp,  and has a \gnopc server at
+\texttt{b1.boughtcorp.com} which connects to \texttt{gnpc.hardcorp.com}.
+
+
+
+\section{Messages}
+
+The complete set of messages is as follows:
+
+
+\begin{itemize}
+\item I have had an event which is of interest to various people.  
+ Please forward it.  (Monitor $\rightarrow$ Publishing service)
+
+\item I am interested in hearing about the following events.
+ (Mgmt console / event store $\rightarrow$ Publishing service)
+
+\item An event happened which you are interested in.
+ (Publishing service $\rightarrow$ Mgmt console / event store)
+
+\item I've just started up.  What interesting events have happened?
+ (Mgmt console $\rightarrow$ Event store)
+
+\item Here are the events you wanted to know about 
+ (Event store $\rightarrow$ mgmt console)
+
+\item Hello,  are you alive?
+ (Anything $\rightarrow$ anything)
+
+\item Yes,  I am alive
+ (Anything $\rightarrow$ anything)
+
+\item I have recorded the value X for the attribute Y of data thingy Z.
+ (Monitor $\rightarrow$ data store)
+
+\item Please run this command from your list of approved, standard commands
+ (Mgmt console $\rightarrow$ Mgmt daemon)
+
+\item Please run this command that you don't know about,  trusting me to
+ be good based merely on my identification
+ (Mgmt console $\rightarrow$ Mgmt daemon)
+
+\item Please connect to TCP/IP port number P (on interface X.X.X.X),
+ Process Q will feed you the data to interact with it.  
+
+\item Hello Process Q,  please listen on TCP/IP port number P2 
+ (on interface Y.Y.Y.Y).  Tunnel any data that gets sent to it to
+ process Q2 (stream N).
+
+\item Here is some data for that tunnelled IP connection called stream N.
+
+
+\end{itemize}
+
+
+\end{document}
