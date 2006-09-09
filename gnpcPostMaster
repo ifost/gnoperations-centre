@@ -1,0 +1,128 @@
+#!/usr/bin/python
+
+# The daemon that listens for
+#   (a) incoming events from anywhere on the
+#       network
+#   (b) browsers and event handlers connecting
+#       wanting to register their interest in
+#       some kind of messages
+
+import socket
+import select
+import anydbm
+import pickle
+import Event
+import gnpcMessageHeaders
+import gnpcSendMessage
+import sys
+import getopt
+import string
+
+bind_hostname = ''
+bind_portnum = gnpcSendMessage.default_send_port
+
+def usage():
+    sys.exit('usage: ' + sys.argv[0] + ' [--bind hostname] [--port portnum] ')
+
+(opts,remainder) = getopt.getopt(sys.argv[1:],'bp',['bind=','port='])
+for (key,value) in opts:
+    print "option key=",key," -- value = ",value
+    if ((key == '--bind') or (key == '-b')):
+        bind_hostname = value
+    if ((key == '--port') or (key == '-p')):
+        try:
+            bind_portnum = string.atoi(value)
+        except ValueError:
+            usage()
+
+max_message_length = 100000  # 100kbytes should be more than enough
+
+input_sources_table = {}
+input_sources_table[newconnection.fileno()] = newconnection
+
+input_buffer = {}
+
+event_id_count = 1
+
+
+def BreakConnection(handle):
+    filenum = handle.fileno()
+    print "Disconnecting ",filenum
+    handle.shutdown(2)
+    del input_sources_table[filenum]
+    del input_buffer[filenum]    
+
+while 1:
+    print "Ready and waiting for something to do."
+    (input_waiting,output_waiting,error_waiting) = select.select(input_sources_table.values(),[],input_sources_table.values())
+    
+    print "Got something to do: "
+    for handle in input_waiting:
+        filenum = handle.fileno()
+        # did have newconnection handling here,  now it's in
+        # gnpcIncomingConnectionWrapper
+
+        # must be an existing connection, then...
+        data = handle.recv(1024)
+        if data == '':
+            # perhaps indicative of a close???
+            BreakConnection(handle)
+            continue
+        if input_buffer.has_key(filenum):
+            input_buffer[filenum] = input_buffer[filenum] + data
+        else:
+            input_buffer[filenum] = data
+        #print "I currently have",input_buffer[filenum],"waiting on the queue"
+        workspace = input_buffer[filenum]
+
+        # What's happening?
+        thing_happening = None
+        for thing in [gnpcMessageHeaders.incoming_event,
+                      gnpcMessageHeaders.event_for_forwarding]:
+            if workspace[:len(thing)] == thing:
+                picklespace = workspace[len(thing):]
+                try:
+                    new_event = pickle.loads(picklespace)
+                except EOFError:
+                    # we can't juust keep on growing forever if we
+                    # can't understand what was sent.
+                    if len(input_buffer[filenum]) > max_message_length:
+                        print "Overflow on ",filenum
+                        BreakConnection(handle)
+                    thing_happening = None
+                    break
+                # Ah good,  we have unpacked an event happily
+                print "Just received an event: ",event_id_count
+                redump = pickle.dumps(new_event)
+                input_buffer[filenum] = picklespace[len(redump):]
+                thing_happening = thing
+                break
+            else:
+                # we are here because either (a) this is
+                # a message that does not have an event sent
+                # as an argument,  or (b) it does but we need
+                # to go to the next element in the loop to
+                # find it.
+                pass
+
+        if thing_happening == gnpcMessageHeaders.incoming_event:
+            new_event['ID'] = event_id_count
+            event_id_count = event_id_count+1
+            new_event.TextDisplay()
+            continue
+        elif thing_happening == gnpcMessageHeaders.event_for_forwarding:
+            # We're in big trouble if this tries to send to itself
+            # I must do something about this
+            print "Will do some forwarding"
+            gnpcSendMessage.forwardMessageToMsgd(new_event)
+            continue
+        else:
+            # time to try some other "thing_happening"
+            # possibilities --
+            pass
+        
+            
+
+    for handle in error_waiting:
+        BreakConnection(handle)
+        

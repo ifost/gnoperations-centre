@@ -1,0 +1,12 @@
+
+
+----------------------------------------------------------------------
+Write a class that can be used as  connection_constructor 
+for gnpcIncomingConnectionWrapper.
+(There would be at least two -- one for proxyTelnet,  the other for
+gnpcMessage transferal)
+
+ ( I have written gnpcMessageTransferConnectionWrapper for this
+   purpose.  Read through the protocol in it and gnpcEncoding
+   to work out how it works.  Now rewrite gnpcMessage to  
+   use that same protocol. )

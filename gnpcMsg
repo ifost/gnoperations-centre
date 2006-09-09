@@ -1,0 +1,78 @@
+#!/usr/bin/python
+
+import Event
+import sys
+import string
+import os
+import socket
+import time
+import gnpcSendMessage
+
+up = string.upper
+
+def usage():
+    sys.exit('usage: '+sys.argv[0]+' dest=mgmt_server  --option=value    option=value    --option value ....\n')
+    
+dictionary = {}
+i=1
+while (i < len(sys.argv)):
+    print "Working on argument",i
+    word = sys.argv[i]
+    print "  -- it is",word
+    if string.lower(word) in ['-h','--help','/?','-?']:
+        usage()
+    if (len(word)>2) and (word[0:2]=='--'):
+        word=word[2:]
+        splitup = string.split(word,'=',2)
+        if len(splitup)==1:
+            key = word
+            if (i == len(sys.argv)):
+                usage()
+            value = sys.argv[i+1]
+            i=i+1
+        else:
+            [key,value] = splitup
+    else:
+        splitup = string.split(word,'=',2)
+        if len(splitup)==1:
+            usage()
+        [key,value] = splitup
+    dictionary[up(key)] = value
+    i=i+1
+
+destination = None
+common_destination_names = ['GNPC_DEST','DESTINATION','DEST','SEND_TO','TARGET','MGMT_SV','MANAGEMENT_SERVER','MGMT_SERVER']
+for name in common_destination_names:
+    if dictionary.has_key(name):
+        destination = dictionary[name]
+        #del dictionary[name]
+        break
+
+if destination is None:
+    # environment variable?
+    import os
+    for name in common_destination_names:
+        if os.environ.has_key(name):
+            destination = os.environ(name)
+            break
+
+# I could have a config file as well,  perhaps?
+# Perhaps I could try localhost as well,  on the
+# off chance that I am also running a gnpc_msgd?
+
+if destination is None:
+    # give up,  no idea.  I could try localhost,  with the idea
+    # of queueing it up for somewhere else,  maybe??
+    sys.stderr.write('No destination specified.  (i.e. none of the following keywords\nwere found:\n  '+string.join(common_destination_names,'\n  ')+'\n')
+    usage()
+
+
+    
+    
+event = Event.Event(dictionary)
+try:
+    gnpcSendMessage.forwardMessageToMsgd(event,destination)
+except gnpcSendMessage.CouldNotSendException:
+    sys.exit('Could not send message')
+except gnpcSendMessage.NonnumericPortException:
+    sys.exit('Not a numeric port number')
